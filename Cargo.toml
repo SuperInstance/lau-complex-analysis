@@ -1,0 +1,15 @@
+[package]
+name = "lau-complex-analysis"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Complex analysis library: holomorphic functions, contour integration, residue theory, conformal mapping, and agent frequency analysis"
+repository = "https://github.com/SuperInstance/lau-complex-analysis"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+nalgebra = "0.35"
+num-complex = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+approx = "0.5"
