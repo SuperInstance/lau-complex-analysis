@@ -1,106 +1,251 @@
 # lau-complex-analysis
 
-> Complex analysis library: holomorphic functions, contour integration, residue theory, conformal mapping, and agent frequency analysis
+A Rust library for **complex analysis** — holomorphic functions, contour integration, Cauchy's theorem, residue calculus, Taylor/Laurent series, conformal mapping, and frequency-domain agent analysis.
 
 ## What This Does
 
-Complex analysis library: holomorphic functions, contour integration, residue theory, conformal mapping, and agent frequency analysis. Part of the PLATO/LAU ecosystem — a mathematically rigorous framework for building educational agents that learn, teach, and evolve.
+This crate provides the core building blocks of single-variable complex analysis, implemented from scratch in pure Rust:
 
-## The Key Idea
+- **Complex arithmetic** — polar form, branches of the logarithm, roots, exponential, trigonometric functions
+- **Holomorphicity checking** — numerical verification of the Cauchy-Riemann equations at arbitrary points
+- **Contour integration** — line segments, circles, arcs, polygons, and fully generic parametric curves, with adaptive quadrature
+- **Cauchy's integral formula** — evaluating analytic functions and all their derivatives via contour integrals
+- **Power series** — Taylor and Laurent expansion with automatic radius-of-convergence estimation
+- **Residue theory** — residue computation at poles of any order, residue theorem for closed contours
+- **Argument principle & Rouché's theorem** — counting zeros and poles inside contours
+- **Conformal mapping** — Möbius transformations with circle-preserving geometry
+- **Agent frequency analysis** — applying complex Fourier techniques to agent signal decomposition
 
-This crate implements the core abstractions needed for its domain, with a focus on correctness, composability, and conservation guarantees. Every public type is serializable (serde), every algorithm is tested, and every invariant is verified.
+## Key Idea
+
+Complex analysis is the natural language for two-dimensional potential theory, signal processing, and holomorphic dynamics. This library treats complex-valued functions as first-class citizens: every contour is a parameterized curve `z(t)` with its derivative `z'(t)`, and every integral is computed via numerical quadrature over the parameter domain `[0, 1]`.
+
+The **agent frequency** module applies these tools to multi-agent systems — decomposing agent behavior signals into frequency components, finding dominant periodic modes, and analyzing spectral structure using the complex exponential basis.
 
 ## Install
 
-```bash
-cargo add lau-complex-analysis
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+lau-complex-analysis = "0.1"
 ```
+
+Requires **Rust 2021 edition**.
+
+### Dependencies
+
+| Crate | Purpose |
+|-------|---------|
+| `num-complex` | `Complex64` type |
+| `nalgebra` | Linear algebra (agent frequency analysis) |
+| `serde` | Serialization of contours, series, residues |
 
 ## Quick Start
 
-See the API Reference below for complete usage. Key entry points:
+### Holomorphicity check
 
 ```rust
-use lau_complex_analysis::*;
-// See types and methods below for complete usage
+use num_complex::Complex64;
+use lau_complex_analysis::HolomorphicCheck;
+
+let check = HolomorphicCheck::new(1e-6);
+
+// f(z) = z² is entire (holomorphic everywhere)
+let result = check.check_at(|z| z * z, 1.0, 2.0);
+assert!(result.is_holomorphic);
+
+// f(z) = conj(z) is NOT holomorphic
+let result = check.check_at(|z| z.conj(), 1.0, 2.0);
+assert!(!result.is_holomorphic);
+```
+
+### Contour integration
+
+```rust
+use num_complex::Complex64;
+use lau_complex_analysis::{Contour, ContourIntegrator};
+
+// Integrate f(z) = 1/z around the unit circle → 2πi
+let circle = Contour::Circle { center: (0.0, 0.0), radius: 1.0 };
+let integrator = ContourIntegrator::new(10000); // 10000 quadrature points
+let result = integrator.integrate(&circle, |z| 1.0 / z);
+// result ≈ 2πi
+```
+
+### Residue theorem
+
+```rust
+use lau_complex_analysis::{Residue, ResidueTheorem};
+
+// f(z) = 1/(z² + 1) has simple poles at z = ±i
+let f = |z: Complex64| 1.0 / (z * z + 1.0);
+
+// Residue at z = i is 1/(2i) = -i/2
+let res_at_i = Residue::simple_pole(f, Complex64::new(0.0, 1.0));
+
+// Sum of residues × 2πi gives the contour integral
+let theorem = ResidueTheorem::new();
+let integral = theorem.evaluate(f, &[Complex64::new(0.0, 1.0)], 1000);
+```
+
+### Taylor series
+
+```rust
+use lau_complex_analysis::TaylorSeries;
+
+// Expand eᶻ around z₀ = 0
+let series = TaylorSeries::new(|z: Complex64| z.exp(), Complex64::new(0.0, 0.0), 10);
+let coeffs = series.coefficients(); // [1, 1, 1/2, 1/6, ...]
+```
+
+### Möbius transformation
+
+```rust
+use lau_complex_analysis::MobiusTransformation;
+use num_complex::Complex64;
+
+// Map the upper half-plane to the unit disk
+let mob = MobiusTransformation::new(
+    Complex64::new(1.0, 0.0),  // a
+    Complex64::new(-1.0, 0.0), // b  (z₀ = -1)
+    Complex64::new(1.0, 0.0),  // c
+    Complex64::new(1.0, 0.0),  // d
+);
+
+let z = Complex64::new(0.0, 1.0); // i (upper half-plane)
+let w = mob.apply(z);
+// |w| < 1 — inside the unit disk
 ```
 
 ## API Reference
 
-```rust
-pub struct ArgumentPrinciple;
-    pub fn winding_number<F, G>(f: F, f_prime: G, contour: &Contour) -> i32
-    pub fn count_zeros<F, G>(f: F, f_prime: G, contour: &Contour) -> i32
-    pub fn zeros_minus_poles<F, G>(f: F, f_prime: G, contour: &Contour) -> i32
-pub struct RoucheTheorem;
-    pub fn check_condition<F, G>(
-    pub fn count_zeros<F, G, H>(
-pub struct RoucheResult 
-pub struct HolomorphicResult 
-pub struct HolomorphicCheck 
-    pub fn new(tolerance: f64) -> Self 
-    pub fn check_at<F>(&self, f: F, x: f64, y: f64) -> HolomorphicResult
-    pub fn check_region<F>(&self, f: F, points: &[(f64, f64)]) -> Vec<HolomorphicResult>
-    pub fn is_entire<F>(&self, f: F, range: (f64, f64), steps: usize) -> bool
-    pub fn derivative<F>(f: &F, z: Complex64) -> Complex64
-pub struct MobiusTransformation 
-    pub fn new(a: Complex64, b: Complex64, c: Complex64, d: Complex64) -> Self 
-    pub fn apply(&self, z: Complex64) -> Complex64 
-    pub fn inverse(&self) -> Self 
-    pub fn compose(&self, other: &MobiusTransformation) -> Self 
-    pub fn identity() -> Self 
-    pub fn translation(w: Complex64) -> Self 
-    pub fn scaling(lambda: Complex64) -> Self 
-    pub fn rotation(theta: f64) -> Self 
-    pub fn inversion() -> Self 
-    pub fn from_three_points(
-    pub fn determinant(&self) -> Complex64 
-    pub fn fixed_points(&self) -> (Option<Complex64>, Option<Complex64>) 
-    pub fn is_elliptic(&self) -> bool 
-    pub fn apply_batch(&self, points: &[Complex64]) -> Vec<Complex64> 
-pub enum Contour 
-    pub fn evaluate(&self, t: f64) -> (Complex64, Complex64) 
-    pub fn unit_circle() -> Self 
-    pub fn circle(center: (f64, f64), radius: f64) -> Self 
-    pub fn reverse(&self) -> Self 
-pub struct ContourIntegrator 
-    pub fn new(n_points: usize) -> Self 
-    pub fn integrate<F>(&self, f: F, contour: &Contour) -> Complex64
-    pub fn integrate_with_n<F>(&self, f: F, contour: &Contour, n: usize) -> Complex64
-    pub fn integrate_abs<F>(&self, f: F, contour: &Contour) -> f64
-pub enum SingularityType 
-pub struct Singularity 
-pub struct Residue;
-    pub fn compute<F>(f: F, a: Complex64, radius: f64) -> Complex64
-    pub fn simple_pole<F>(f: F, a: Complex64) -> Complex64
-    pub fn pole_of_order<F>(f: F, a: Complex64, m: u32) -> Complex64
-    pub fn classify<F>(f: F, a: Complex64) -> Singularity
-pub struct ResidueTheorem;
-    pub fn apply<F>(
-    pub fn verify<F>(
-pub fn point_inside_circle(point: Complex64, center: (f64, f64), radius: f64) -> bool 
-pub trait ComplexExt 
-pub fn exp(z: Complex64) -> Complex64 
-pub fn sin(z: Complex64) -> Complex64 
-pub fn cos(z: Complex64) -> Complex64 
-pub fn log(z: Complex64) -> Complex64 
-pub fn pow(z: Complex64, w: Complex64) -> Complex64 
-pub fn c(re: f64, im: f64) -> Complex64 
-pub struct FrequencyResult 
-pub struct ZTransform;
-```
+### `complex` — Extended Complex Arithmetic
+
+| Item | Description |
+|------|-------------|
+| `ComplexExt` trait | `to_polar`, `from_polar`, `ln`, `ln_branch`, `exp`, `csin`, `ccos`, `powc`, `nth_root`, `all_nth_roots` |
+
+### `holomorphic` — Cauchy-Riemann Verification
+
+| Item | Description |
+|------|-------------|
+| `HolomorphicCheck` | Numerically checks `∂u/∂x = ∂v/∂y` and `∂u/∂y = -∂v/∂x` at a point |
+| `HolomorphicResult` | Struct with partial derivatives, CR error, and boolean verdict |
+
+### `integration` — Contour Integration
+
+| Item | Description |
+|------|-------------|
+| `Contour` enum | `LineSegment`, `Circle`, `Arc`, `Polygon`, `Parametric` |
+| `ContourIntegrator` | Evaluates `∮ f(z) dz` using trapezoidal quadrature |
+
+### `cauchy` — Cauchy's Integral Formula
+
+| Item | Description |
+|------|-------------|
+| `CauchyIntegral` | `f(z₀) = (1/2πi) ∮ f(z)/(z-z₀) dz` and derivatives `f⁽ⁿ⁾(z₀)` |
+
+### `series` — Taylor & Laurent Series
+
+| Item | Description |
+|------|-------------|
+| `TaylorSeries` | Coefficients via Cauchy's formula, radius of convergence |
+| `LaurentSeries` | Positive and negative power coefficients, annular convergence |
+
+### `residue` — Residue Calculus
+
+| Item | Description |
+|------|-------------|
+| `Residue` | Compute residues at simple poles and higher-order poles |
+| `ResidueTheorem` | `∮ f(z) dz = 2πi Σ Res(f, zₖ)` over closed contours |
+
+### `argument` — Argument Principle & Rouché
+
+| Item | Description |
+|------|-------------|
+| `ArgumentPrinciple` | `N - P = (1/2πi) ∮ f'(z)/f(z) dz` — count zeros minus poles |
+| `RoucheTheorem` | If `|g| < |f|` on contour, `f` and `f+g` have the same number of zeros |
+
+### `conformal` — Conformal Mapping
+
+| Item | Description |
+|------|-------------|
+| `MobiusTransformation` | `w = (az+b)/(cz+d)` with inverse, composition, circle preservation |
+
+### `agent_frequency` — Agent Signal Analysis
+
+| Item | Description |
+|------|-------------|
+| `AgentFrequencyAnalysis` | FFT-based decomposition of agent behavior signals into frequency components, spectral analysis, dominant mode extraction |
 
 ## How It Works
 
-Read the source in `src/` for full implementation details. All algorithms are documented with inline comments explaining the mathematical foundations.
+### Contour representation
+
+Every contour implements `evaluate(t) → (z, dz/dt)` for `t ∈ [0, 1]`. This uniform parameterization makes the integration machinery generic:
+
+```
+∮_C f(z) dz = ∫₀¹ f(z(t)) · z'(t) dt
+```
+
+The trapezoidal rule with configurable sample count provides the numerical quadrature. For closed contours (circles, polygons), periodicity of the integrand makes this spectrally accurate.
+
+### Residue computation
+
+For a **simple pole** at `z₀`, the residue is computed by:
+
+```
+Res(f, z₀) = lim_{z→z₀} (z - z₀) · f(z)
+```
+
+evaluated numerically with a small perturbation. For **higher-order poles**, a Laurent coefficient extraction is used.
+
+### Cauchy-Riemann check
+
+Given `f(z) = u(x,y) + iv(x,y)`, the library computes partial derivatives numerically via central differences:
+
+```
+∂u/∂x ≈ [u(x+h, y) - u(x-h, y)] / 2h
+```
+
+and checks `∂u/∂x = ∂v/∂y` and `∂u/∂y = -∂v/∂x` within tolerance.
 
 ## The Math
 
-This crate implements formal mathematical constructs. See the source documentation for theorem statements and proofs of correctness.
+**Cauchy's integral formula** states that for `f` holomorphic inside and on a simple closed contour `C`:
 
-## Testing
+```
+f(z₀) = (1/2πi) ∮_C f(z)/(z - z₀) dz
+```
 
-**55 tests** covering construction, serialization, correctness properties, edge cases, and composability with other lau-* crates.
+Differentiating `n` times:
+
+```
+f⁽ⁿ⁾(z₀) = n!/(2πi) ∮_C f(z)/(z - z₀)ⁿ⁺¹ dz
+```
+
+The **residue theorem** generalizes this: for a meromorphic function `f` with isolated singularities `z₁, ..., zₙ` inside `C`:
+
+```
+∮_C f(z) dz = 2πi · Σₖ Res(f, zₖ)
+```
+
+The **argument principle** relates the winding number of `f(C)` around the origin to the count of zeros and poles:
+
+```
+Z - P = (1/2πi) ∮_C f'(z)/f(z) dz = (1/2π) Δ arg f(z)
+```
+
+**Möbius transformations** `w = (az+b)/(cz+d)` with `ad - bc ≠ 0` map circles to circles and preserve angles. They form the automorphism group of the Riemann sphere.
+
+**Laurent series** extend Taylor series to annular domains around isolated singularities:
+
+```
+f(z) = Σ_{n=-∞}^{∞} aₙ(z - z₀)ⁿ
+```
+
+The coefficient `a₋₁` is the residue at `z₀`.
 
 ## License
 
